@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ character.name }} - {{ book.title }}</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>{{ character.name }}</h1>
+        <p>{{ character.description }}</p>
+        <a href="/books/{{ book.id }}">Вернуться к книге</a>
+    </div>
+</body>
+</html>

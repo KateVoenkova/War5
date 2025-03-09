@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ book.title }} - Book Manager</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Georgia', serif;
+            background-color: #f8f4e3;
+            color: #3e2723;
+        }
+        .container {
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        .tooltip {
+            position: absolute;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            border-radius: 6px;
+            pointer-events: none;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .node circle {
+            fill: #6d4c41;
+            stroke: #fff;
+            stroke-width: 2px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .node text {
+            font: 14px Georgia, serif;
+            fill: white;
+            pointer-events: none;
+        }
+        .link {
+            stroke: #8d6e63;
+            stroke-opacity: 0.6;
+            stroke-width: 2px;
+        }
+        .node:hover circle {
+            fill: #d7ccc8;
+            transform: scale(1.1);
+        }
+        #visualization {
+            overflow: hidden;
+            width: 100vw;
+            height: 80vh;
+            position: relative;
+        }
+        #zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        button {
+            margin: 5px;
+            padding: 8px 12px;
+            border: none;
+            background: #795548;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: #5d4037;
+        }
+        svg {
+            display: block;
+            cursor: grab;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ book.title }}</h1>
+        <div id="visualization">
+            <svg></svg>
+            <div class="tooltip"></div>
+            <div id="zoom-controls">
+                <button onclick="zoomIn()">+</button>
+                <button onclick="zoomOut()">-</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const bookId = {{ book.id | tojson }};
+        const width = window.innerWidth;
+        const height = window.innerHeight * 0.8;
+
+        const svg = d3.select("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .append("g");
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 10])
+            .on("zoom", (event) => {
+                svg.attr("transform", event.transform);
+            });
+
+        d3.select("svg").call(zoom);
+
+        function zoomIn() {
+            d3.select("svg").transition().call(zoom.scaleBy, 1.2);
+        }
+
+        function zoomOut() {
+            d3.select("svg").transition().call(zoom.scaleBy, 0.8);
+        }
+
+        async function loadData() {
+            const response = await fetch(`/books/${bookId}/characters`);
+            return await response.json();
+        }
+
+        async function initVisualization() {
+            const characters = await loadData();
+            const links = characters.slice(1).map((_, i) => ({ source: characters[i].id, target: characters[i + 1].id }));
+
+            const simulation = d3.forceSimulation()
+                .force("link", d3.forceLink().id(d => d.id).distance(150))
+                .force("charge", d3.forceManyBody().strength(-500))
+                .force("center", d3.forceCenter(width / 2, height / 2));
+
+            const link = svg.append("g")
+                .selectAll("line")
+                .data(links)
+                .join("line")
+                .attr("class", "link");
+
+            const node = svg.append("g")
+                .selectAll("g")
+                .data(characters)
+                .join("g")
+                .call(drag(simulation));
+
+            node.append("circle")
+                .attr("r", 20)
+                .on("click", (event, d) => {
+                    window.location.href = `/books/${bookId}/characters/${d.id}`;
+                });
+
+            node.append("text")
+                .text(d => d.name)
+                .attr("text-anchor", "middle")
+                .attr("dy", 4);
+
+            simulation.nodes(characters).on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+                node.attr("transform", d => `translate(${d.x},${d.y})`);
+            });
+
+            simulation.force("link").links(links);
+        }
+
+        function drag(simulation) {
+            return d3.drag()
+                .on("start", (event, d) => {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                })
+                .on("drag", (event, d) => {
+                    d.fx = event.x;
+                    d.fy = event.y;
+                })
+                .on("end", (event, d) => {
+                    if (!event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                });
+        }
+
+        initVisualization();
+    </script>
+</body>
+</html>

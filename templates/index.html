@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Book Manager</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Book Manager</h1>
+
+        <div class="upload-form">
+            <h2>Upload New Book</h2>
+            <input type="file" id="fileInput">
+            <button onclick="uploadFile()">Upload</button>
+            <div id="uploadStatus"></div>
+        </div>
+
+        <h2>Uploaded Books</h2>
+        <ul class="book-list">
+            {% for book in books %}
+            <li class="book-item">
+                <a href="/books/{{ book.id }}">{{ book.title }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <script>
+        async function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const statusDiv = document.getElementById('uploadStatus');
+
+            if (!fileInput.files[0]) {
+                statusDiv.textContent = 'Please select a file';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    statusDiv.textContent = 'Success! Reloading...';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    statusDiv.textContent = 'Error: ' + result.error;
+                }
+            } catch (error) {
+                statusDiv.textContent = 'Network error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
