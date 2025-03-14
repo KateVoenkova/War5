@@ -1,4 +1,4 @@
 flask
-sqlalchemy
+flask_sqlalchemy
 python-dotenv
-uuid
+chardet
